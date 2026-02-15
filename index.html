@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Color Tap Jump Pro</title>
+<style>
+body { margin:0; overflow:hidden; }
+canvas { display:block; margin:auto; }
+#gameOverScreen{
+  position:absolute;
+  top:40%;
+  width:100%;
+  text-align:center;
+  font-size:30px;
+  display:none;
+}
+button{
+  padding:10px 20px;
+  font-size:18px;
+}
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+
+<div id="gameOverScreen">
+  <p id="finalScore"></p>
+  <button onclick="restartGame()">Restart</button>
+</div>
+
+<script>
+let canvas = document.getElementById("gameCanvas");
+let ctx = canvas.getContext("2d");
+
+let player = { x:200, y:500, size:40, dy:0, gravity:0.6, jump:-12 };
+let obstacles = [];
+let coins = [];
+let score = 0;
+let coinScore = 0;
+let level = 1;
+let speed = 3;
+let gameOver = false;
+let bestScore = localStorage.getItem("bestScore") || 0;
+
+function drawPlayer(){
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.size/2, 0, Math.PI*2);
+    ctx.fill();
+}
+
+function drawRect(obj,color){
+    ctx.fillStyle = color;
+    ctx.fillRect(obj.x, obj.y, obj.width, obj.height);
+}
+
+function update(){
+    if(gameOver) return;
+
+    ctx.clearRect(0,0,400,600);
+    canvas.style.background =
+      "hsl(" + (score % 360) + ", 70%, 70%)";
+
+    player.dy += player.gravity;
+    player.y += player.dy;
+
+    if(player.y > 500){
+        player.y = 500;
+        player.dy = 0;
+    }
+
+    drawPlayer();
+
+    if(Math.random() < 0.02){
+        obstacles.push({x:Math.random()*350, y:0, width:50, height:20});
+    }
+
+    if(Math.random() < 0.015){
+        coins.push({x:Math.random()*360, y:0, width:20, height:20});
+    }
+
+    obstacles.forEach((o,index)=>{
+        o.y += speed;
+        drawRect(o,"blue");
+
+        let r = player.size/2;
+        if(player.x - r < o.x + o.width &&
+           player.x + r > o.x &&
+           player.y - r < o.y + o.height &&
+           player.y + r > o.y){
+            endGame();
+        }
+
+        if(o.y > 600) obstacles.splice(index,1);
+    });
+
+    coins.forEach((c,index)=>{
+        c.y += speed;
+        drawRect(c,"gold");
+
+        let r = player.size/2;
+        if(player.x - r < c.x + c.width &&
+           player.x + r > c.x &&
+           player.y - r < c.y + c.height &&
+           player.y + r > c.y){
+            coinScore++;
+            coins.splice(index,1);
+        }
+
+        if(c.y > 600) coins.splice(index,1);
+    });
+
+    score++;
+
+    // Level system
+    if(score % 500 === 0){
+        level++;
+        speed += 1;
+    }
+
+    ctx.fillStyle="black";
+    ctx.font="18px Arial";
+    ctx.fillText("Score: " + score, 10, 25);
+    ctx.fillText("Coins: " + coinScore, 10, 50);
+    ctx.fillText("Level: " + level, 10, 75);
+    ctx.fillText("Best: " + bestScore, 10, 100);
+
+    requestAnimationFrame(update);
+}
+
+function endGame(){
+    gameOver = true;
+
+    if(score > bestScore){
+        bestScore = score;
+        localStorage.setItem("bestScore", bestScore);
+    }
+
+    document.getElementById("gameOverScreen").style.display="block";
+    document.getElementById("finalScore").innerText =
+        "Game Over! Score: " + score +
+        " | Coins: " + coinScore +
+        " | Level: " + level;
+}
+
+function restartGame(){
+    location.reload();
+}
+
+document.addEventListener("click", function(){
+    if(player.y >= 500){
+        player.dy = player.jump;
+    }
+});
+
+update();
+</script>
+
+</body>
+</html>
